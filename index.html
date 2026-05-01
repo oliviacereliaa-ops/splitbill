@@ -122,7 +122,13 @@
   .empty { color: var(--muted); font-size: 0.9rem; font-style: italic; }
   a { color: var(--accent); }
   @media (max-width: 520px) {
-    .item-row { grid-template-columns: 1fr 90px auto; }
+    .item-row {
+      grid-template-columns: 1fr 80px auto;
+    }
+    /* Name spans full width on mobile, price/qty/× below */
+    .item-row > input[type="text"] {
+      grid-column: 1 / -1;
+    }
     h1 { font-size: 1.4rem; }
     .card { padding: 14px; }
   }
@@ -178,6 +184,10 @@
         <label>Tip</label>
         <input type="number" id="tipAmt" value="0" min="0" step="0.01" />
       </div>
+    </div>
+    <div style="margin-top: 12px;">
+      <label>Receipt grand total <span style="color:var(--muted);font-weight:400;">(optional — for cross-checking)</span></label>
+      <input type="number" id="receiptTotal" min="0" step="0.01" placeholder="e.g. 250000" />
     </div>
   </div>
 
@@ -446,16 +456,28 @@
       html += `<p style="color:var(--danger);margin-top:10px;font-size:0.85rem;">⚠ ${unassigned.length} item(s) not assigned to anyone — excluded from totals.</p>`;
     }
 
-    // Reconciliation check: sum of rounded per-person totals vs actual grand total
+    // Check 1: Receipt grand total (optional) vs calculated grand total
+    const receiptTotal = Number($('receiptTotal').value) || 0;
+    if (receiptTotal > 0) {
+      const recDiff = grandTotal - receiptTotal;
+      if (Math.abs(recDiff) >= 1) {
+        const sign = recDiff > 0 ? 'over' : 'under';
+        html += `<p style="color:var(--danger);margin-top:8px;font-size:0.9rem;font-weight:600;">
+          ⚠ Calculated total (${fmt(grandTotal)}) is ${sign} the receipt total (${fmt(receiptTotal)}) by ${fmt(Math.abs(recDiff))}. Check items, qty, or extras.
+        </p>`;
+      } else {
+        html += `<p style="color:var(--ok);margin-top:8px;font-size:0.9rem;font-weight:600;">
+          ✓ Calculated total matches the receipt total (${fmt(receiptTotal)}).
+        </p>`;
+      }
+    }
+
+    // Check 2: rounded per-person totals vs calculated grand total
     const diff = sumRounded - grandTotal;
     if (Math.abs(diff) >= 1) {
       const sign = diff > 0 ? '+' : '−';
-      html += `<p style="color:var(--danger);margin-top:8px;font-size:0.85rem;">
-        ⚠ Rounded sum (${fmtInt(sumRounded)}) ${sign} ${fmt(Math.abs(diff))} off from actual grand total (${fmt(grandTotal)}).
-      </p>`;
-    } else {
-      html += `<p style="color:var(--ok);margin-top:8px;font-size:0.85rem;">
-        ✓ Totals match the grand total.
+      html += `<p style="color:var(--muted);margin-top:6px;font-size:0.8rem;">
+        Note: rounded sum of per-person totals = ${fmtInt(sumRounded)} (${sign}${fmt(Math.abs(diff))} vs calculated ${fmt(grandTotal)}).
       </p>`;
     }
 
@@ -629,7 +651,7 @@
   $('skipScanBtn').addEventListener('click', () => addItem('', 0));
   $('scanBtn').addEventListener('click', runOCR);
 
-  ['taxAmt','serviceAmt','tipAmt'].forEach(id => {
+  ['taxAmt','serviceAmt','tipAmt','receiptTotal'].forEach(id => {
     $(id).addEventListener('input', renderTotals);
   });
 
