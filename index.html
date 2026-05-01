@@ -6,15 +6,16 @@
 <title>Split Bill</title>
 <style>
   :root {
-    --bg: #0f172a;
-    --card: #1e293b;
-    --muted: #94a3b8;
-    --text: #f1f5f9;
-    --accent: #38bdf8;
-    --accent-2: #22d3ee;
-    --danger: #f87171;
-    --ok: #4ade80;
-    --border: #334155;
+    --bg: #f5f1e8;          /* off-white / cream */
+    --card: #ffffff;
+    --muted: #6b7d6e;       /* sage gray */
+    --text: #1a2e1f;        /* deep forest text */
+    --accent: #2d5a3d;      /* forest green */
+    --accent-2: #3d7a52;    /* lighter forest */
+    --accent-soft: #e8efe6; /* very light sage */
+    --danger: #b85c5c;
+    --ok: #4a7c59;
+    --border: #d8e2dc;
   }
   * { box-sizing: border-box; }
   body {
@@ -25,39 +26,48 @@
     line-height: 1.4;
   }
   .container { max-width: 880px; margin: 0 auto; padding: 24px 16px 80px; }
-  h1 { font-size: 1.6rem; margin: 0 0 4px; }
+  h1 { font-size: 1.7rem; margin: 0 0 4px; color: var(--accent); letter-spacing: -0.02em; }
   p.lead { color: var(--muted); margin: 0 0 24px; font-size: 0.95rem; }
   .card {
     background: var(--card);
     border: 1px solid var(--border);
     border-radius: 12px;
-    padding: 16px;
+    padding: 18px;
     margin-bottom: 16px;
+    box-shadow: 0 1px 2px rgba(45, 90, 61, 0.04);
   }
-  .card h2 { margin: 0 0 12px; font-size: 1.05rem; }
+  .card h2 { margin: 0 0 14px; font-size: 1.05rem; color: var(--accent); }
   label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 6px; }
   input[type="text"], input[type="number"], input[type="file"] {
     width: 100%;
-    background: #0f172a;
+    background: #fdfcf8;
     color: var(--text);
     border: 1px solid var(--border);
     border-radius: 8px;
     padding: 10px 12px;
     font-size: 0.95rem;
+    transition: border-color 0.15s;
   }
-  input[type="file"] { padding: 8px; }
+  input[type="text"]:focus, input[type="number"]:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  input[type="file"] { padding: 8px; background: var(--accent-soft); }
   button {
     background: var(--accent);
-    color: #0f172a;
+    color: #fdfcf8;
     border: 0;
     border-radius: 8px;
     padding: 10px 14px;
     font-weight: 600;
     cursor: pointer;
     font-size: 0.9rem;
+    transition: background 0.15s;
   }
-  button.secondary { background: var(--border); color: var(--text); }
-  button.danger { background: var(--danger); color: #0f172a; }
+  button:hover { background: var(--accent-2); }
+  button.secondary { background: var(--accent-soft); color: var(--accent); }
+  button.secondary:hover { background: var(--border); }
+  button.danger { background: var(--danger); color: #fff; }
   button.small { padding: 6px 10px; font-size: 0.8rem; }
   button:disabled { opacity: 0.5; cursor: not-allowed; }
   .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
@@ -65,53 +75,51 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: #0f172a;
+    background: var(--accent-soft);
     border: 1px solid var(--border);
-    padding: 4px 8px;
+    padding: 5px 10px;
     border-radius: 999px;
-    font-size: 0.8rem;
+    font-size: 0.85rem;
     cursor: pointer;
     user-select: none;
+    color: var(--accent);
+    transition: all 0.15s;
   }
-  .pill.active { background: var(--accent); color: #0f172a; border-color: var(--accent); }
+  .pill:hover { border-color: var(--accent); }
+  .pill.active { background: var(--accent); color: #fdfcf8; border-color: var(--accent); }
   .item-row {
     display: grid;
-    grid-template-columns: 1fr 100px auto;
+    grid-template-columns: 1fr 110px auto;
     gap: 8px;
     margin-bottom: 8px;
     align-items: center;
   }
-  .assignees { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px; }
-  .preview-img { max-width: 100%; max-height: 240px; border-radius: 8px; margin-top: 8px; display: block; }
+  .assignees { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .preview-img { max-width: 100%; max-height: 240px; border-radius: 8px; margin-top: 8px; display: block; border: 1px solid var(--border); }
   .progress { font-size: 0.85rem; color: var(--muted); margin-top: 8px; }
   table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
-  table th, table td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border); }
-  table th { color: var(--muted); font-weight: 500; font-size: 0.85rem; }
-  .total { font-size: 1.4rem; font-weight: 700; color: var(--accent-2); }
+  table th, table td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--border); }
+  table th { color: var(--muted); font-weight: 500; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  table tbody tr:hover { background: var(--accent-soft); }
+  .total { font-size: 1.4rem; font-weight: 700; color: var(--accent); }
   .footer-note { color: var(--muted); font-size: 0.8rem; text-align: center; margin-top: 24px; }
   .empty { color: var(--muted); font-size: 0.9rem; font-style: italic; }
+  a { color: var(--accent); }
   @media (max-width: 520px) {
-    .item-row { grid-template-columns: 1fr 80px auto; }
-    h1 { font-size: 1.3rem; }
+    .item-row { grid-template-columns: 1fr 90px auto; }
+    h1 { font-size: 1.4rem; }
+    .card { padding: 14px; }
   }
 </style>
 </head>
 <body>
 <div class="container">
-  <h1>Split Bill</h1>
-  <p class="lead">Upload a receipt photo, assign items to people, and let the math sort itself out.</p>
+  <h1>🌿 Split Bill</h1>
+  <p class="lead">Upload a receipt, assign items, split tax & tip proportionally.</p>
 
   <!-- 1. Upload receipt -->
   <div class="card">
     <h2>1. Upload receipt</h2>
-    <div style="margin-bottom: 10px;">
-      <label>OCR.space API key <span style="color:var(--muted);font-weight:400;">(stored locally on your device, never sent to GitHub)</span></label>
-      <div class="row">
-        <input type="text" id="apiKey" placeholder="paste your free key (helloworld works for testing)" style="flex:1;min-width:200px;" />
-        <button id="saveKeyBtn" class="secondary small">Save</button>
-      </div>
-      <div class="progress">Get a free key: <a href="https://ocr.space/ocrapi/freekey" target="_blank" style="color:var(--accent);">ocr.space/ocrapi/freekey</a> — 25,000 scans/month free.</div>
-    </div>
     <input type="file" id="receiptFile" accept="image/*" />
     <img id="preview" class="preview-img" style="display:none" />
     <div class="row" style="margin-top: 10px;">
@@ -128,7 +136,7 @@
       <input type="text" id="personInput" placeholder="Name" style="flex:1; min-width: 140px;" />
       <button id="addPersonBtn">Add</button>
     </div>
-    <div id="peopleList" class="row" style="margin-top: 10px;"></div>
+    <div id="peopleList" class="row" style="margin-top: 12px;"></div>
   </div>
 
   <!-- 3. Items -->
@@ -138,21 +146,21 @@
     <button id="addItemBtn" class="secondary small" style="margin-top:8px;">+ Add item</button>
   </div>
 
-  <!-- 4. Tax / service / tip -->
+  <!-- 4. Tax / service / tip (absolute amounts) -->
   <div class="card">
-    <h2>4. Tax / Service / Tip</h2>
+    <h2>4. Tax / Service / Tip <span style="color:var(--muted);font-weight:400;font-size:0.85rem;">(in your currency, split proportionally)</span></h2>
     <div class="row">
       <div style="flex:1; min-width:120px;">
-        <label>Tax (%)</label>
-        <input type="number" id="taxPct" value="0" min="0" step="0.1" />
+        <label>Tax</label>
+        <input type="number" id="taxAmt" value="0" min="0" step="0.01" />
       </div>
       <div style="flex:1; min-width:120px;">
-        <label>Service (%)</label>
-        <input type="number" id="servicePct" value="0" min="0" step="0.1" />
+        <label>Service</label>
+        <input type="number" id="serviceAmt" value="0" min="0" step="0.01" />
       </div>
       <div style="flex:1; min-width:120px;">
-        <label>Tip (%)</label>
-        <input type="number" id="tipPct" value="0" min="0" step="0.1" />
+        <label>Tip</label>
+        <input type="number" id="tipAmt" value="0" min="0" step="0.01" />
       </div>
     </div>
   </div>
@@ -163,11 +171,14 @@
     <div id="totals"></div>
   </div>
 
-  <p class="footer-note">All processing happens in your browser. No data leaves your device.</p>
+  <p class="footer-note">All processing happens in your browser. No data leaves your device except the receipt photo (sent to OCR.space for scanning).</p>
 </div>
 
 <script>
 (function(){
+  // Baked-in OCR.space API key (override possible by setting localStorage 'ocrspace_api_key')
+  const DEFAULT_API_KEY = 'K85053534788957';
+
   const state = {
     people: [],          // [{id, name}]
     items: [],           // [{id, name, price, assigned: Set<personId>}]
@@ -183,16 +194,12 @@
     name = name.trim();
     if (!name) return;
     state.people.push({ id: state.nextPersonId++, name });
-    renderPeople();
-    renderItems();
-    renderTotals();
+    renderPeople(); renderItems(); renderTotals();
   }
   function removePerson(id) {
     state.people = state.people.filter(p => p.id !== id);
     state.items.forEach(it => it.assigned.delete(id));
-    renderPeople();
-    renderItems();
-    renderTotals();
+    renderPeople(); renderItems(); renderTotals();
   }
   function renderPeople() {
     const el = $('peopleList');
@@ -219,21 +226,18 @@
       price: Number(price) || 0,
       assigned: new Set(),
     });
-    renderItems();
-    renderTotals();
+    renderItems(); renderTotals();
   }
   function removeItem(id) {
     state.items = state.items.filter(it => it.id !== id);
-    renderItems();
-    renderTotals();
+    renderItems(); renderTotals();
   }
   function toggleAssign(itemId, personId) {
     const it = state.items.find(x => x.id === itemId);
     if (!it) return;
     if (it.assigned.has(personId)) it.assigned.delete(personId);
     else it.assigned.add(personId);
-    renderItems();
-    renderTotals();
+    renderItems(); renderTotals();
   }
   function renderItems() {
     const el = $('itemsContainer');
@@ -264,7 +268,6 @@
       delBtn.addEventListener('click', () => removeItem(it.id));
       wrap.appendChild(row);
 
-      // Assignees
       const assignees = document.createElement('div');
       assignees.className = 'assignees';
       if (!state.people.length) {
@@ -284,40 +287,59 @@
   }
 
   // ---------- Totals ----------
+  // Tax/service/tip are absolute amounts. Each person gets a share of the total
+  // extras proportional to their item subtotal.
   function renderTotals() {
     const el = $('totals');
     if (!state.people.length) {
       el.innerHTML = '<div class="empty">Add people to see totals.</div>';
       return;
     }
-    const subtotal = state.items.reduce((s, it) => s + it.price, 0);
-    const taxPct = Number($('taxPct').value) || 0;
-    const servicePct = Number($('servicePct').value) || 0;
-    const tipPct = Number($('tipPct').value) || 0;
-    const multiplier = 1 + (taxPct + servicePct + tipPct) / 100;
+    const tax = Number($('taxAmt').value) || 0;
+    const service = Number($('serviceAmt').value) || 0;
+    const tip = Number($('tipAmt').value) || 0;
+    const totalExtras = tax + service + tip;
 
-    // Per-person subtotal from assigned items
+    // Per-person item subtotal (only assigned items)
     const perPerson = {};
     state.people.forEach(p => perPerson[p.id] = 0);
-
+    let assignedSubtotal = 0;
     state.items.forEach(it => {
       const assignees = [...it.assigned];
-      if (!assignees.length) return; // unassigned items ignored
+      if (!assignees.length) return;
       const share = it.price / assignees.length;
       assignees.forEach(pid => { perPerson[pid] += share; });
+      assignedSubtotal += it.price;
     });
 
-    const grandTotal = subtotal * multiplier;
+    // Distribute extras proportionally to assigned subtotal.
+    // If no items assigned yet, split extras evenly across all people.
+    const extrasPerPerson = {};
+    state.people.forEach(p => extrasPerPerson[p.id] = 0);
+    if (totalExtras > 0) {
+      if (assignedSubtotal > 0) {
+        state.people.forEach(p => {
+          const ratio = perPerson[p.id] / assignedSubtotal;
+          extrasPerPerson[p.id] = totalExtras * ratio;
+        });
+      } else {
+        const even = totalExtras / state.people.length;
+        state.people.forEach(p => extrasPerPerson[p.id] = even);
+      }
+    }
 
-    let html = '<table><thead><tr><th>Person</th><th>Subtotal</th><th>+ Tax/Svc/Tip</th><th>Total</th></tr></thead><tbody>';
+    const subtotalAll = state.items.reduce((s, it) => s + it.price, 0);
+    const grandTotal = assignedSubtotal + totalExtras;
+
+    let html = '<table><thead><tr><th>Person</th><th>Items</th><th>Tax/Svc/Tip</th><th>Total</th></tr></thead><tbody>';
     state.people.forEach(p => {
       const sub = perPerson[p.id];
-      const total = sub * multiplier;
+      const extra = extrasPerPerson[p.id];
       html += `<tr>
         <td>${escapeHtml(p.name)}</td>
         <td>${fmt(sub)}</td>
-        <td>${fmt(total - sub)}</td>
-        <td><strong>${fmt(total)}</strong></td>
+        <td>${fmt(extra)}</td>
+        <td><strong>${fmt(sub + extra)}</strong></td>
       </tr>`;
     });
     html += '</tbody></table>';
@@ -327,32 +349,28 @@
       html += `<p style="color:var(--danger);margin-top:10px;font-size:0.85rem;">⚠ ${unassigned.length} item(s) not assigned to anyone — excluded from totals.</p>`;
     }
 
-    html += `<div style="margin-top:14px;display:flex;justify-content:space-between;align-items:center;">
-      <span style="color:var(--muted)">Subtotal: ${fmt(subtotal)} • Grand total: ${fmt(grandTotal)}</span>
+    html += `<div style="margin-top:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+      <span style="color:var(--muted);font-size:0.9rem;">
+        Items subtotal: ${fmt(subtotalAll)}${assignedSubtotal !== subtotalAll ? ` (assigned: ${fmt(assignedSubtotal)})` : ''} • Extras: ${fmt(totalExtras)}
+      </span>
       <span class="total">${fmt(grandTotal)}</span>
     </div>`;
     el.innerHTML = html;
   }
 
-  // Resize + JPEG-compress to stay under OCR.space's 1MB free-tier limit
+  // ---------- Image compression ----------
   async function compressImage(file, maxBytes = 1000 * 1024) {
-    // Skip if already tiny
     if (file.size <= maxBytes && file.type === 'image/jpeg') return file;
-
     const dataUrl = await new Promise((res, rej) => {
       const r = new FileReader();
-      r.onload = () => res(r.result);
-      r.onerror = rej;
+      r.onload = () => res(r.result); r.onerror = rej;
       r.readAsDataURL(file);
     });
     const img = await new Promise((res, rej) => {
       const i = new Image();
-      i.onload = () => res(i);
-      i.onerror = rej;
+      i.onload = () => res(i); i.onerror = rej;
       i.src = dataUrl;
     });
-
-    // Try a sequence of (maxEdge, quality) until size fits
     const attempts = [
       [2400, 0.92], [2000, 0.9], [1800, 0.85], [1600, 0.8],
       [1400, 0.75], [1200, 0.7], [1000, 0.65], [900, 0.6], [800, 0.55],
@@ -362,48 +380,41 @@
       const w = Math.round(img.width * scale);
       const h = Math.round(img.height * scale);
       const canvas = document.createElement('canvas');
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, w, h);
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
       const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', q));
       if (blob && blob.size <= maxBytes) {
         return new File([blob], 'receipt.jpg', { type: 'image/jpeg' });
       }
     }
-    // Last-resort tiny fallback
     return null;
   }
 
-  // ---------- OCR (via OCR.space API) ----------
+  // ---------- OCR ----------
   async function runOCR() {
     if (!state.imageFile) return;
-    const apiKey = ($('apiKey').value || '').trim() || 'helloworld';
+    const apiKey = (localStorage.getItem('ocrspace_api_key') || '').trim() || DEFAULT_API_KEY;
     const progEl = $('progress');
     const scanBtn = $('scanBtn');
     scanBtn.disabled = true;
-
     try {
       progEl.textContent = `Compressing photo (${(state.imageFile.size/1024/1024).toFixed(2)} MB)…`;
       const compressed = await compressImage(state.imageFile);
-      if (!compressed) throw new Error('Could not compress image small enough. Try a smaller photo.');
-      progEl.textContent = `Uploading to OCR.space (${(compressed.size/1024).toFixed(0)} KB)…`;
+      if (!compressed) throw new Error('Could not compress image small enough.');
+      progEl.textContent = `Scanning (${(compressed.size/1024).toFixed(0)} KB)…`;
 
       const fd = new FormData();
       fd.append('file', compressed);
       fd.append('language', 'eng');
-      fd.append('OCREngine', '2');     // engine 2 = best for receipts
-      fd.append('isTable', 'true');     // tabular output preserves item/price alignment
+      fd.append('OCREngine', '2');
+      fd.append('isTable', 'true');
       fd.append('scale', 'true');
       fd.append('detectOrientation', 'true');
 
       const resp = await fetch('https://api.ocr.space/parse/image', {
-        method: 'POST',
-        headers: { apikey: apiKey },
-        body: fd,
+        method: 'POST', headers: { apikey: apiKey }, body: fd,
       });
       const data = await resp.json();
-
       if (data.IsErroredOnProcessing) {
         const msg = Array.isArray(data.ErrorMessage) ? data.ErrorMessage.join('; ') : (data.ErrorMessage || 'Unknown OCR error');
         throw new Error(msg);
@@ -427,21 +438,15 @@
     }
   }
 
-  // Best-effort receipt parser: line with text + trailing price-like number.
-  // Handles both plain OCR text and OCR.space tabular output (tab-separated columns).
   function parseReceipt(text) {
     const items = [];
     const skipKw = /^(sub.?total|total|tax|tip|service|change|cash|visa|master|card|amount|gst|vat|ppn|discount|disc|round|tunai|kembali|jumlah|bayar)\b/i;
     const priceLike = /^[\-]?[\d.,]+$/;
-
     text.split(/\r?\n/).forEach(rawLine => {
       let line = rawLine.replace(/\s+$/, '');
       if (!line.trim()) return;
       if (skipKw.test(line.trim())) return;
-
       let name = '', priceStr = '';
-
-      // If tabular: split on tabs, last numeric column = price
       if (line.includes('\t')) {
         const cols = line.split('\t').map(c => c.trim()).filter(Boolean);
         if (cols.length < 2) return;
@@ -450,30 +455,24 @@
         priceStr = last;
         name = cols.slice(0, -1).join(' ').trim();
       } else {
-        // Fallback: trailing number on the line
         const m = line.trim().match(/^(.*?)[\s.\-:]+([\-]?[\d.,]+)\s*$/);
         if (!m) return;
         name = m[1].replace(/[\s.\-:]+$/, '').trim();
         priceStr = m[2];
       }
-
-      // Normalize price: handle 1.234,56 (EU) and 1,234.56 (US) and 1.234.567 (id)
       priceStr = priceStr.replace(/\s/g, '');
       const hasComma = priceStr.includes(',');
       const hasDot = priceStr.includes('.');
       if (hasComma && hasDot) {
-        // Decimal is whichever appears last
         if (priceStr.lastIndexOf(',') > priceStr.lastIndexOf('.')) {
           priceStr = priceStr.replace(/\./g, '').replace(',', '.');
         } else {
           priceStr = priceStr.replace(/,/g, '');
         }
       } else if (hasComma) {
-        // If comma followed by exactly 2 digits, treat as decimal; else thousands
         if (/,\d{2}$/.test(priceStr)) priceStr = priceStr.replace(/\./g, '').replace(',', '.');
         else priceStr = priceStr.replace(/,/g, '');
       } else if (hasDot) {
-        // Multiple dots = thousands sep, last dot only kept if 2 digits after
         const parts = priceStr.split('.');
         if (parts.length > 2) {
           const last = parts[parts.length - 1];
@@ -484,7 +483,6 @@
       const price = parseFloat(priceStr);
       if (!isFinite(price) || price <= 0) return;
       if (!name || name.length < 2 || name.length > 80) return;
-      // Reject if name is mostly digits (likely a line number/qty)
       if (/^\d+$/.test(name)) return;
       items.push({ name, price });
     });
@@ -492,9 +490,7 @@
   }
 
   // ---------- Helpers ----------
-  function fmt(n) {
-    return (Math.round(n * 100) / 100).toFixed(2);
-  }
+  function fmt(n) { return (Math.round(n * 100) / 100).toFixed(2); }
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, c => ({
       '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
@@ -515,7 +511,7 @@
   $('skipScanBtn').addEventListener('click', () => addItem('', 0));
   $('scanBtn').addEventListener('click', runOCR);
 
-  ['taxPct','servicePct','tipPct'].forEach(id => {
+  ['taxAmt','serviceAmt','tipAmt'].forEach(id => {
     $(id).addEventListener('input', renderTotals);
   });
 
@@ -533,21 +529,6 @@
     reader.readAsDataURL(f);
   });
 
-  // API key persistence (localStorage)
-  const KEY_STORAGE = 'ocrspace_api_key';
-  $('apiKey').value = localStorage.getItem(KEY_STORAGE) || '';
-  $('saveKeyBtn').addEventListener('click', () => {
-    const v = $('apiKey').value.trim();
-    if (v) {
-      localStorage.setItem(KEY_STORAGE, v);
-      $('progress').textContent = 'API key saved on this device.';
-    } else {
-      localStorage.removeItem(KEY_STORAGE);
-      $('progress').textContent = 'API key cleared.';
-    }
-  });
-
-  // Initial render
   renderPeople();
   renderItems();
   renderTotals();
