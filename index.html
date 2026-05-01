@@ -89,12 +89,28 @@
   .pill.active { background: var(--accent); color: #fdfcf8; border-color: var(--accent); }
   .item-row {
     display: grid;
-    grid-template-columns: 1fr 110px auto;
+    grid-template-columns: 1fr 110px 70px auto;
     gap: 8px;
     margin-bottom: 8px;
     align-items: center;
   }
-  .assignees { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .item-row .label-row { display: contents; }
+  .assignees { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .pill .count {
+    background: rgba(255,255,255,0.25);
+    padding: 1px 6px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    margin-left: 2px;
+  }
+  .pill .remove {
+    margin-left: 4px;
+    color: rgba(255,255,255,0.85);
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .qty-info { font-size: 0.78rem; color: var(--muted); margin-left: 4px; }
+  .qty-warn { color: var(--danger); }
   .preview-img { max-width: 100%; max-height: 240px; border-radius: 8px; margin-top: 8px; display: block; border: 1px solid var(--border); }
   .progress { font-size: 0.85rem; color: var(--muted); margin-top: 8px; }
   table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
@@ -219,12 +235,14 @@
   }
 
   // ---------- Items ----------
-  function addItem(name = '', price = 0) {
+  // assigned is a Map<personId, shares>. shares = how many units of this item the person took.
+  function addItem(name = '', price = 0, qty = 1) {
     state.items.push({
       id: state.nextItemId++,
       name,
       price: Number(price) || 0,
-      assigned: new Set(),
+      qty: Math.max(1, Number(qty) || 1),
+      assigned: new Map(),
     });
     renderItems(); renderTotals();
   }
@@ -232,11 +250,32 @@
     state.items = state.items.filter(it => it.id !== id);
     renderItems(); renderTotals();
   }
-  function toggleAssign(itemId, personId) {
+  // Click pill: if not assigned, set to 1. If already assigned, increment.
+  function bumpAssign(itemId, personId) {
     const it = state.items.find(x => x.id === itemId);
     if (!it) return;
-    if (it.assigned.has(personId)) it.assigned.delete(personId);
-    else it.assigned.add(personId);
+    const cur = it.assigned.get(personId) || 0;
+    it.assigned.set(personId, cur + 1);
+    renderItems(); renderTotals();
+  }
+  function unassign(itemId, personId) {
+    const it = state.items.find(x => x.id === itemId);
+    if (!it) return;
+    it.assigned.delete(personId);
+    renderItems(); renderTotals();
+  }
+  // Spread evenly across all people (each gets 1 share)
+  function assignAll(itemId) {
+    const it = state.items.find(x => x.id === itemId);
+    if (!it) return;
+    it.assigned.clear();
+    state.people.forEach(p => it.assigned.set(p.id, 1));
+    renderItems(); renderTotals();
+  }
+  function clearAssign(itemId) {
+    const it = state.items.find(x => x.id === itemId);
+    if (!it) return;
+    it.assigned.clear();
     renderItems(); renderTotals();
   }
   function renderItems() {
@@ -248,38 +287,85 @@
     el.innerHTML = '';
     state.items.forEach(it => {
       const wrap = document.createElement('div');
-      wrap.style.marginBottom = '12px';
-      wrap.style.paddingBottom = '12px';
+      wrap.style.marginBottom = '14px';
+      wrap.style.paddingBottom = '14px';
       wrap.style.borderBottom = '1px solid var(--border)';
 
       const row = document.createElement('div');
       row.className = 'item-row';
       row.innerHTML = `
         <input type="text" placeholder="Item name" value="${escapeHtml(it.name)}" />
-        <input type="number" step="0.01" value="${it.price}" />
+        <input type="number" step="0.01" value="${it.price}" placeholder="Price" />
+        <input type="number" step="1" min="1" value="${it.qty}" placeholder="Qty" />
         <button class="danger small">×</button>
       `;
-      const [nameInput, priceInput, delBtn] = row.children;
+      const [nameInput, priceInput, qtyInput, delBtn] = row.children;
       nameInput.addEventListener('input', e => { it.name = e.target.value; });
       priceInput.addEventListener('input', e => {
         it.price = Number(e.target.value) || 0;
         renderTotals();
       });
+      qtyInput.addEventListener('input', e => {
+        it.qty = Math.max(1, Number(e.target.value) || 1);
+        renderItems(); renderTotals();
+      });
       delBtn.addEventListener('click', () => removeItem(it.id));
       wrap.appendChild(row);
 
+      // Quick-action buttons
+      const actions = document.createElement('div');
+      actions.style.cssText = 'margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;';
+      const allBtn = document.createElement('button');
+      allBtn.className = 'secondary small';
+      allBtn.textContent = 'All members (split evenly)';
+      allBtn.addEventListener('click', () => assignAll(it.id));
+      actions.appendChild(allBtn);
+      if (it.assigned.size) {
+        const clrBtn = document.createElement('button');
+        clrBtn.className = 'secondary small';
+        clrBtn.textContent = 'Clear';
+        clrBtn.addEventListener('click', () => clearAssign(it.id));
+        actions.appendChild(clrBtn);
+      }
+      wrap.appendChild(actions);
+
+      // Assignee pills
       const assignees = document.createElement('div');
       assignees.className = 'assignees';
       if (!state.people.length) {
         assignees.innerHTML = '<span class="empty">Add people first.</span>';
       } else {
         state.people.forEach(p => {
+          const shares = it.assigned.get(p.id) || 0;
           const pill = document.createElement('span');
-          pill.className = 'pill' + (it.assigned.has(p.id) ? ' active' : '');
-          pill.textContent = p.name;
-          pill.addEventListener('click', () => toggleAssign(it.id, p.id));
+          pill.className = 'pill' + (shares > 0 ? ' active' : '');
+          if (shares > 0) {
+            pill.innerHTML = `${escapeHtml(p.name)}<span class="count">×${shares}</span><span class="remove">✕</span>`;
+            pill.title = 'Click name to add another share';
+            pill.addEventListener('click', e => {
+              if (e.target.classList.contains('remove')) {
+                e.stopPropagation();
+                unassign(it.id, p.id);
+              } else {
+                bumpAssign(it.id, p.id);
+              }
+            });
+          } else {
+            pill.textContent = p.name;
+            pill.title = 'Click to assign 1 share; click again to add more';
+            pill.addEventListener('click', () => bumpAssign(it.id, p.id));
+          }
           assignees.appendChild(pill);
         });
+
+        // Qty status
+        const totalShares = [...it.assigned.values()].reduce((s, n) => s + n, 0);
+        if (totalShares > 0 || it.qty > 1) {
+          const info = document.createElement('span');
+          info.className = 'qty-info' + (totalShares !== it.qty && totalShares > 0 ? ' qty-warn' : '');
+          info.textContent = `${totalShares}/${it.qty} units assigned${totalShares !== it.qty && totalShares > 0 ? ' ⚠' : ''}`;
+          assignees.appendChild(info);
+        }
       }
       wrap.appendChild(assignees);
       el.appendChild(wrap);
@@ -300,15 +386,16 @@
     const tip = Number($('tipAmt').value) || 0;
     const totalExtras = tax + service + tip;
 
-    // Per-person item subtotal (only assigned items)
+    // Per-person item subtotal (weighted by share count per item)
     const perPerson = {};
     state.people.forEach(p => perPerson[p.id] = 0);
     let assignedSubtotal = 0;
     state.items.forEach(it => {
-      const assignees = [...it.assigned];
-      if (!assignees.length) return;
-      const share = it.price / assignees.length;
-      assignees.forEach(pid => { perPerson[pid] += share; });
+      const totalShares = [...it.assigned.values()].reduce((s, n) => s + n, 0);
+      if (totalShares <= 0) return;
+      it.assigned.forEach((shares, pid) => {
+        perPerson[pid] += it.price * (shares / totalShares);
+      });
       assignedSubtotal += it.price;
     });
 
@@ -331,7 +418,17 @@
     const subtotalAll = state.items.reduce((s, it) => s + it.price, 0);
     const grandTotal = assignedSubtotal + totalExtras;
 
-    let html = '<table><thead><tr><th>Person</th><th>Items</th><th>Tax/Svc/Tip</th><th>Total</th></tr></thead><tbody>';
+    // Round per-person totals to nearest 1,000
+    const roundedTotals = {};
+    let sumRounded = 0;
+    state.people.forEach(p => {
+      const r = roundToThousand(perPerson[p.id] + extrasPerPerson[p.id]);
+      roundedTotals[p.id] = r;
+      sumRounded += r;
+    });
+    const roundedGrand = roundToThousand(grandTotal);
+
+    let html = '<table><thead><tr><th>Person</th><th>Items</th><th>Tax/Svc/Tip</th><th>Total (rounded)</th></tr></thead><tbody>';
     state.people.forEach(p => {
       const sub = perPerson[p.id];
       const extra = extrasPerPerson[p.id];
@@ -339,7 +436,7 @@
         <td>${escapeHtml(p.name)}</td>
         <td>${fmt(sub)}</td>
         <td>${fmt(extra)}</td>
-        <td><strong>${fmt(sub + extra)}</strong></td>
+        <td><strong>${fmtInt(roundedTotals[p.id])}</strong></td>
       </tr>`;
     });
     html += '</tbody></table>';
@@ -349,11 +446,24 @@
       html += `<p style="color:var(--danger);margin-top:10px;font-size:0.85rem;">⚠ ${unassigned.length} item(s) not assigned to anyone — excluded from totals.</p>`;
     }
 
+    // Reconciliation check: sum of rounded per-person totals vs actual grand total
+    const diff = sumRounded - grandTotal;
+    if (Math.abs(diff) >= 1) {
+      const sign = diff > 0 ? '+' : '−';
+      html += `<p style="color:var(--danger);margin-top:8px;font-size:0.85rem;">
+        ⚠ Rounded sum (${fmtInt(sumRounded)}) ${sign} ${fmt(Math.abs(diff))} off from actual grand total (${fmt(grandTotal)}).
+      </p>`;
+    } else {
+      html += `<p style="color:var(--ok);margin-top:8px;font-size:0.85rem;">
+        ✓ Totals match the grand total.
+      </p>`;
+    }
+
     html += `<div style="margin-top:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
       <span style="color:var(--muted);font-size:0.9rem;">
         Items subtotal: ${fmt(subtotalAll)}${assignedSubtotal !== subtotalAll ? ` (assigned: ${fmt(assignedSubtotal)})` : ''} • Extras: ${fmt(totalExtras)}
       </span>
-      <span class="total">${fmt(grandTotal)}</span>
+      <span class="total">${fmtInt(roundedGrand)}</span>
     </div>`;
     el.innerHTML = html;
   }
@@ -492,6 +602,12 @@
   // ---------- Helpers ----------
   function fmt(n) {
     return (Math.round(n * 100) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function fmtInt(n) {
+    return Math.round(n).toLocaleString('en-US');
+  }
+  function roundToThousand(n) {
+    return Math.round(n / 1000) * 1000;
   }
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, c => ({
