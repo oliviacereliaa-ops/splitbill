@@ -334,6 +334,47 @@
     el.innerHTML = html;
   }
 
+  // Resize + JPEG-compress to stay under OCR.space's 1MB free-tier limit
+  async function compressImage(file, maxBytes = 1000 * 1024) {
+    // Skip if already tiny
+    if (file.size <= maxBytes && file.type === 'image/jpeg') return file;
+
+    const dataUrl = await new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result);
+      r.onerror = rej;
+      r.readAsDataURL(file);
+    });
+    const img = await new Promise((res, rej) => {
+      const i = new Image();
+      i.onload = () => res(i);
+      i.onerror = rej;
+      i.src = dataUrl;
+    });
+
+    // Try a sequence of (maxEdge, quality) until size fits
+    const attempts = [
+      [2400, 0.92], [2000, 0.9], [1800, 0.85], [1600, 0.8],
+      [1400, 0.75], [1200, 0.7], [1000, 0.65], [900, 0.6], [800, 0.55],
+    ];
+    for (const [maxEdge, q] of attempts) {
+      const scale = Math.min(1, maxEdge / Math.max(img.width, img.height));
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', q));
+      if (blob && blob.size <= maxBytes) {
+        return new File([blob], 'receipt.jpg', { type: 'image/jpeg' });
+      }
+    }
+    // Last-resort tiny fallback
+    return null;
+  }
+
   // ---------- OCR (via OCR.space API) ----------
   async function runOCR() {
     if (!state.imageFile) return;
@@ -341,11 +382,15 @@
     const progEl = $('progress');
     const scanBtn = $('scanBtn');
     scanBtn.disabled = true;
-    progEl.textContent = 'Uploading to OCR.space…';
 
     try {
+      progEl.textContent = `Compressing photo (${(state.imageFile.size/1024/1024).toFixed(2)} MB)…`;
+      const compressed = await compressImage(state.imageFile);
+      if (!compressed) throw new Error('Could not compress image small enough. Try a smaller photo.');
+      progEl.textContent = `Uploading to OCR.space (${(compressed.size/1024).toFixed(0)} KB)…`;
+
       const fd = new FormData();
-      fd.append('file', state.imageFile);
+      fd.append('file', compressed);
       fd.append('language', 'eng');
       fd.append('OCREngine', '2');     // engine 2 = best for receipts
       fd.append('isTable', 'true');     // tabular output preserves item/price alignment
