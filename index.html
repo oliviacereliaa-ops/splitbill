@@ -447,17 +447,17 @@
     const subtotalAll = state.items.reduce((s, it) => s + it.price, 0);
     const grandTotal = assignedSubtotal + totalExtras;
 
-    // Round per-person totals to nearest 1,000
+    // Round per-person totals to nearest whole number (no decimals)
     const roundedTotals = {};
     let sumRounded = 0;
     state.people.forEach(p => {
-      const r = roundToThousand(perPerson[p.id] + extrasPerPerson[p.id]);
+      const r = Math.round(perPerson[p.id] + extrasPerPerson[p.id]);
       roundedTotals[p.id] = r;
       sumRounded += r;
     });
-    const roundedGrand = roundToThousand(grandTotal);
+    const roundedGrand = Math.round(grandTotal);
 
-    let html = '<table><thead><tr><th>Person</th><th>Items</th><th>Tax/Svc/Tip</th><th>Total (rounded)</th></tr></thead><tbody>';
+    let html = '<table><thead><tr><th>Person</th><th>Items</th><th>Tax/Svc/Tip</th><th>Total</th></tr></thead><tbody>';
     state.people.forEach(p => {
       const sub = perPerson[p.id];
       const extra = extrasPerPerson[p.id];
@@ -591,12 +591,19 @@
 
   function parseReceipt(text) {
     const items = [];
-    const skipKw = /^(sub.?total|total|tax|tip|service|change|cash|visa|master|card|amount|gst|vat|ppn|discount|disc|round|tunai|kembali|jumlah|bayar)\b/i;
+    // Lines that obviously aren't items — skip if they START with these tokens.
+    const skipKw = /^(sub.?total|grand.?total|total|tax|tip|service|service\s*charge|sc\b|change|cash|visa|master|card|amount|gst|vat|ppn|pb\s*1|pb1|pajak|biaya|admin|discount|disc|round|rounding|tunai|kembali|jumlah|bayar|payment|paid|due|balance|qty|item|price|harga|no\.?|tanggal|date|kasir|cashier|table|meja|guest|tamu|order|struk|receipt|invoice|nota)\b/i;
+    // Also skip lines that CONTAIN these mid-line (e.g. "Pajak Restoran 10%")
+    const skipAnywhere = /\b(pb\s*1|pb1|pajak\s+(restoran|resto)|service\s*charge|grand\s*total|sub\s*total)\b/i;
     const priceLike = /^[\-]?[\d.,]+$/;
+    const datishLike = /^[\d\/\-:.\s]+$/; // dates, times, line numbers
     text.split(/\r?\n/).forEach(rawLine => {
       let line = rawLine.replace(/\s+$/, '');
-      if (!line.trim()) return;
-      if (skipKw.test(line.trim())) return;
+      const trimmed = line.trim();
+      if (!trimmed) return;
+      if (datishLike.test(trimmed)) return;
+      if (skipKw.test(trimmed)) return;
+      if (skipAnywhere.test(trimmed)) return;
       let name = '', priceStr = '';
       if (line.includes('\t')) {
         const cols = line.split('\t').map(c => c.trim()).filter(Boolean);
