@@ -104,6 +104,14 @@
   <!-- 1. Upload receipt -->
   <div class="card">
     <h2>1. Upload receipt</h2>
+    <div style="margin-bottom: 10px;">
+      <label>OCR.space API key <span style="color:var(--muted);font-weight:400;">(stored locally on your device, never sent to GitHub)</span></label>
+      <div class="row">
+        <input type="text" id="apiKey" placeholder="paste your free key (helloworld works for testing)" style="flex:1;min-width:200px;" />
+        <button id="saveKeyBtn" class="secondary small">Save</button>
+      </div>
+      <div class="progress">Get a free key: <a href="https://ocr.space/ocrapi/freekey" target="_blank" style="color:var(--accent);">ocr.space/ocrapi/freekey</a> — 25,000 scans/month free.</div>
+    </div>
     <input type="file" id="receiptFile" accept="image/*" />
     <img id="preview" class="preview-img" style="display:none" />
     <div class="row" style="margin-top: 10px;">
@@ -158,7 +166,6 @@
   <p class="footer-note">All processing happens in your browser. No data leaves your device.</p>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script>
 (function(){
   const state = {
@@ -166,7 +173,7 @@
     items: [],           // [{id, name, price, assigned: Set<personId>}]
     nextPersonId: 1,
     nextItemId: 1,
-    imageDataUrl: null,
+    imageFile: null,
   };
 
   const $ = (id) => document.getElementById(id);
@@ -327,28 +334,42 @@
     el.innerHTML = html;
   }
 
-  // ---------- OCR ----------
+  // ---------- OCR (via OCR.space API) ----------
   async function runOCR() {
-    if (!state.imageDataUrl) return;
+    if (!state.imageFile) return;
+    const apiKey = ($('apiKey').value || '').trim() || 'helloworld';
     const progEl = $('progress');
     const scanBtn = $('scanBtn');
     scanBtn.disabled = true;
-    progEl.textContent = 'Loading OCR engine…';
+    progEl.textContent = 'Uploading to OCR.space…';
 
     try {
-      const result = await Tesseract.recognize(state.imageDataUrl, 'eng', {
-        logger: m => {
-          if (m.status && m.progress != null) {
-            progEl.textContent = `${m.status} — ${Math.round(m.progress * 100)}%`;
-          }
-        }
+      const fd = new FormData();
+      fd.append('file', state.imageFile);
+      fd.append('language', 'eng');
+      fd.append('OCREngine', '2');     // engine 2 = best for receipts
+      fd.append('isTable', 'true');     // tabular output preserves item/price alignment
+      fd.append('scale', 'true');
+      fd.append('detectOrientation', 'true');
+
+      const resp = await fetch('https://api.ocr.space/parse/image', {
+        method: 'POST',
+        headers: { apikey: apiKey },
+        body: fd,
       });
-      const text = result.data.text || '';
+      const data = await resp.json();
+
+      if (data.IsErroredOnProcessing) {
+        const msg = Array.isArray(data.ErrorMessage) ? data.ErrorMessage.join('; ') : (data.ErrorMessage || 'Unknown OCR error');
+        throw new Error(msg);
+      }
+      const text = (data.ParsedResults && data.ParsedResults[0] && data.ParsedResults[0].ParsedText) || '';
+      if (!text) throw new Error('No text returned. Try a clearer photo.');
+
       const parsed = parseReceipt(text);
       if (!parsed.length) {
-        progEl.textContent = 'No items detected. Try a clearer photo or add manually.';
+        progEl.textContent = 'OCR worked but no items matched. Add manually or try a clearer photo.';
       } else {
-        // Replace existing auto-detected items
         state.items = [];
         parsed.forEach(p => addItem(p.name, p.price));
         progEl.textContent = `Detected ${parsed.length} item(s). Review and edit as needed.`;
@@ -361,28 +382,65 @@
     }
   }
 
-  // Best-effort receipt parser: line with text + trailing price-like number
+  // Best-effort receipt parser: line with text + trailing price-like number.
+  // Handles both plain OCR text and OCR.space tabular output (tab-separated columns).
   function parseReceipt(text) {
     const items = [];
-    // Match lines that end with a number (with optional decimals/commas)
-    const lineRegex = /^(.*?)[\s.\-:]+([\d.,]+)\s*$/;
+    const skipKw = /^(sub.?total|total|tax|tip|service|change|cash|visa|master|card|amount|gst|vat|ppn|discount|disc|round|tunai|kembali|jumlah|bayar)\b/i;
+    const priceLike = /^[\-]?[\d.,]+$/;
+
     text.split(/\r?\n/).forEach(rawLine => {
-      const line = rawLine.trim();
-      if (!line) return;
-      // Skip lines that look like totals/tax keywords
-      if (/^(sub.?total|total|tax|tip|service|change|cash|visa|master|card|amount|gst|vat|ppn)\b/i.test(line)) return;
-      const m = line.match(lineRegex);
-      if (!m) return;
-      const name = m[1].replace(/[\s.\-:]+$/, '').trim();
-      let priceStr = m[2].replace(/,/g, '');
-      // If there are multiple dots, drop all but the last
-      const lastDot = priceStr.lastIndexOf('.');
-      if (priceStr.split('.').length > 2 && lastDot >= 0) {
-        priceStr = priceStr.slice(0, lastDot).replace(/\./g, '') + priceStr.slice(lastDot);
+      let line = rawLine.replace(/\s+$/, '');
+      if (!line.trim()) return;
+      if (skipKw.test(line.trim())) return;
+
+      let name = '', priceStr = '';
+
+      // If tabular: split on tabs, last numeric column = price
+      if (line.includes('\t')) {
+        const cols = line.split('\t').map(c => c.trim()).filter(Boolean);
+        if (cols.length < 2) return;
+        const last = cols[cols.length - 1];
+        if (!priceLike.test(last)) return;
+        priceStr = last;
+        name = cols.slice(0, -1).join(' ').trim();
+      } else {
+        // Fallback: trailing number on the line
+        const m = line.trim().match(/^(.*?)[\s.\-:]+([\-]?[\d.,]+)\s*$/);
+        if (!m) return;
+        name = m[1].replace(/[\s.\-:]+$/, '').trim();
+        priceStr = m[2];
+      }
+
+      // Normalize price: handle 1.234,56 (EU) and 1,234.56 (US) and 1.234.567 (id)
+      priceStr = priceStr.replace(/\s/g, '');
+      const hasComma = priceStr.includes(',');
+      const hasDot = priceStr.includes('.');
+      if (hasComma && hasDot) {
+        // Decimal is whichever appears last
+        if (priceStr.lastIndexOf(',') > priceStr.lastIndexOf('.')) {
+          priceStr = priceStr.replace(/\./g, '').replace(',', '.');
+        } else {
+          priceStr = priceStr.replace(/,/g, '');
+        }
+      } else if (hasComma) {
+        // If comma followed by exactly 2 digits, treat as decimal; else thousands
+        if (/,\d{2}$/.test(priceStr)) priceStr = priceStr.replace(/\./g, '').replace(',', '.');
+        else priceStr = priceStr.replace(/,/g, '');
+      } else if (hasDot) {
+        // Multiple dots = thousands sep, last dot only kept if 2 digits after
+        const parts = priceStr.split('.');
+        if (parts.length > 2) {
+          const last = parts[parts.length - 1];
+          if (last.length === 2) priceStr = parts.slice(0, -1).join('') + '.' + last;
+          else priceStr = parts.join('');
+        }
       }
       const price = parseFloat(priceStr);
       if (!isFinite(price) || price <= 0) return;
-      if (name.length < 2 || name.length > 60) return;
+      if (!name || name.length < 2 || name.length > 80) return;
+      // Reject if name is mostly digits (likely a line number/qty)
+      if (/^\d+$/.test(name)) return;
       items.push({ name, price });
     });
     return items;
@@ -419,15 +477,29 @@
   $('receiptFile').addEventListener('change', e => {
     const f = e.target.files[0];
     if (!f) return;
+    state.imageFile = f;
     const reader = new FileReader();
     reader.onload = ev => {
-      state.imageDataUrl = ev.target.result;
       const img = $('preview');
-      img.src = state.imageDataUrl;
+      img.src = ev.target.result;
       img.style.display = 'block';
       $('scanBtn').disabled = false;
     };
     reader.readAsDataURL(f);
+  });
+
+  // API key persistence (localStorage)
+  const KEY_STORAGE = 'ocrspace_api_key';
+  $('apiKey').value = localStorage.getItem(KEY_STORAGE) || '';
+  $('saveKeyBtn').addEventListener('click', () => {
+    const v = $('apiKey').value.trim();
+    if (v) {
+      localStorage.setItem(KEY_STORAGE, v);
+      $('progress').textContent = 'API key saved on this device.';
+    } else {
+      localStorage.removeItem(KEY_STORAGE);
+      $('progress').textContent = 'API key cleared.';
+    }
   });
 
   // Initial render
