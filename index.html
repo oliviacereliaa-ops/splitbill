@@ -96,10 +96,17 @@
   .pill.active { background: var(--accent); color: #fdfcf8; border-color: var(--accent); }
   .item-row {
     display: grid;
-    grid-template-columns: 1fr 110px 70px auto;
+    grid-template-columns: 1fr 110px 80px auto;
     gap: 8px;
     margin-bottom: 8px;
     align-items: center;
+  }
+  .item-row input[type="text"][inputmode="numeric"],
+  .item-row input.qty-input {
+    text-align: center;
+    font-weight: 600;
+    font-size: 1.05rem;
+    padding: 12px 8px;
   }
   .item-row .label-row { display: contents; }
   .assignees { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
@@ -313,7 +320,7 @@
       row.innerHTML = `
         <input type="text" placeholder="Item name" value="${escapeHtml(it.name)}" />
         <input type="number" step="0.01" value="${it.price}" placeholder="Price" />
-        <input type="text" inputmode="numeric" pattern="[0-9]*" value="${it.qty}" placeholder="Qty" />
+        <input type="text" inputmode="numeric" pattern="[0-9]*" class="qty-input" value="${it.qty}" placeholder="Qty" aria-label="Quantity" />
         <button class="danger small">×</button>
       `;
       const [nameInput, priceInput, qtyInput, delBtn] = row.children;
@@ -322,10 +329,15 @@
         it.price = Number(e.target.value) || 0;
         renderTotals();
       });
+      priceInput.addEventListener('focus', e => e.target.select());
       qtyInput.addEventListener('input', e => {
-        it.qty = Math.max(1, Number(e.target.value) || 1);
-        renderItems(); renderTotals();
+        const v = e.target.value.replace(/\D/g, '');
+        it.qty = Math.max(1, Number(v) || 1);
+        // Don't re-render here — would steal focus. Re-render on blur.
+        renderTotals();
       });
+      qtyInput.addEventListener('focus', e => e.target.select());
+      qtyInput.addEventListener('blur', () => renderItems());
       delBtn.addEventListener('click', () => removeItem(it.id));
       wrap.appendChild(row);
 
@@ -629,8 +641,9 @@
   }
 
   // ---------- Helpers ----------
+  // All amounts shown as whole numbers, no decimals
   function fmt(n) {
-    return (Math.round(n * 100) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return Math.round(n).toLocaleString('en-US');
   }
   function fmtInt(n) {
     return Math.round(n).toLocaleString('en-US');
