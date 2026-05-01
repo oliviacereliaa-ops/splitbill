@@ -53,6 +53,13 @@
     border-color: var(--accent);
   }
   input[type="file"] { padding: 8px; background: var(--accent-soft); }
+  /* Hide spinner arrows on number inputs (cleaner on mobile) */
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] { -moz-appearance: textfield; }
   button {
     background: var(--accent);
     color: #fdfcf8;
@@ -306,7 +313,7 @@
       row.innerHTML = `
         <input type="text" placeholder="Item name" value="${escapeHtml(it.name)}" />
         <input type="number" step="0.01" value="${it.price}" placeholder="Price" />
-        <input type="number" step="1" min="1" value="${it.qty}" placeholder="Qty" />
+        <input type="text" inputmode="numeric" pattern="[0-9]*" value="${it.qty}" placeholder="Qty" />
         <button class="danger small">×</button>
       `;
       const [nameInput, priceInput, qtyInput, delBtn] = row.children;
